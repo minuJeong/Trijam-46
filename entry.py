@@ -13,15 +13,17 @@ from vertex_array_object import VertexArrayObject
 
 
 class Rendering(object):
-    def __init__(self, window, width, height):
+    def __init__(self, window, width, height, gbuffer_div):
         super(Rendering, self).__init__()
 
         self.window = window
         self.width, self.height = width, height
+        self.gbuffer_div = gbuffer_div
+
         self.init()
 
         self.pressed_keys = []
-        self.movement = vec2(0.0, 0.0)
+        self.movement = vec2(3.5, 1.0)
 
         glfw.set_key_callback(window, self.on_key)
 
@@ -46,7 +48,7 @@ class Rendering(object):
     def init(self):
         self.gl = mg.create_context()
 
-        gbuffer_size = (self.width // 2, self.height // 2)
+        gbuffer_size = (self.width // self.gbuffer_div, self.height // self.gbuffer_div)
         self.color = self.gl.texture(gbuffer_size, 4)
         self.normal = self.gl.texture(gbuffer_size, 4)
         self.position = self.gl.texture(gbuffer_size, 4)
@@ -79,7 +81,12 @@ class Rendering(object):
         self.postprocess_vao = VertexArrayObject(mesh, material_postprocess)
 
         self.build(self.gl)
+
+        u_camera_pos = vec3(-9.0, 24.0, -9.0)
+
         material_raymarch.uniform("u_aspect", self.width / self.height)
+        material_raymarch.uniform("u_camerapos", u_camera_pos)
+        material_postprocess.uniform("u_camerapos", u_camera_pos)
 
     def invalidate(self):
         self.screen_vao.invalidate()
@@ -116,6 +123,10 @@ class Rendering(object):
 
         self.movement += move * 10.0 * (t - self.prev_t)
         self.screen_vao.material().uniform("u_control", self.movement)
+        self.screen_vao.material().uniform("u_speed", length(move))
+
+        if length(move) > 0.1:
+            self.screen_vao.material().uniform("u_char_xz_rotation", atan(move.y, -move.x))
 
     def render(self):
         if not self.is_bulit:
@@ -145,13 +156,16 @@ class Rendering(object):
 
 
 def main():
-    width, height = 600, 400
+    width, height = 800, 600
     title = "trijam-46"
+    gbuffer_div = 2
+
     glfw.init()
     glfw.window_hint(glfw.FLOATING, glfw.TRUE)
+    glfw.window_hint(glfw.RESIZABLE, glfw.FALSE)
     window = glfw.create_window(width, height, title, None, None)
     glfw.make_context_current(window)
-    rendering = Rendering(window, width, height)
+    rendering = Rendering(window, width, height, gbuffer_div)
 
     while not glfw.window_should_close(window):
         glfw.poll_events()
