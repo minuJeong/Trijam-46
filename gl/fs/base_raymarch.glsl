@@ -1,0 +1,168 @@
+#version 460
+#define NEAR 0.02
+#define FAR 50.0
+
+in vec4 vs_position;
+
+layout(binding=0) out vec4 fs_color;
+layout(binding=1) out vec4 fs_normal;
+layout(binding=2) out vec4 fs_position;
+layout(binding=3) out vec4 fs_stencil;
+
+uniform float u_aspect;
+uniform vec2 u_control;
+uniform float u_time;
+
+
+float random(vec2 uv)
+{
+    return fract(sin(dot(uv, vec2(12.3412, 46.541)) * 43215.532143));
+}
+
+float sdf_sphere(vec3 p, float rad)
+{
+    return length(p) - rad;
+}
+
+float sdf_box(vec3 p, vec3 b)
+{
+    vec3 d = abs(p) - b;
+    vec3 d0 = max(d, 0.0);
+    vec3 d1 = min(d, 0.0);
+    return length(d0) - max(d1.x, max(d1.y, d1.z));
+}
+
+float sdf_plane(vec3 p, vec3 n, float offset)
+{
+    return dot(p, n) - offset;
+}
+
+float op_union_round(float a, float b, float t)
+{
+    vec2 uu = max(vec2(t - a, t - b), 0.0);
+    return max(t, min(a, b)) - length(uu);
+}
+
+float op_union_chamfer(float a, float b, float r)
+{
+    return min(min(a, b), (a - r + b) * sqrt(0.5));
+}
+
+float op_union_stairs(float a, float b, float r, float n)
+{
+    float s = r / n;
+    float u = b - r;
+    return min(min(a, b), 0.5 * (u + a + abs ((mod(u - a + s, 2 * s)) - s)));
+}
+
+
+float sdf_character(vec3 p, vec3 charpos)
+{
+    vec3 p_sph = p;
+    p_sph -= charpos;
+
+    float jump = cos(u_time * 2.0) * 0.5 + 0.5;
+    jump = pow(jump, 12.0) * 3.14;
+    p_sph.y -= jump;
+
+    float d_sph = sdf_sphere(p_sph, 1.5);
+    return d_sph;
+}
+
+float sdf_forest(vec3 p)
+{
+    vec3 p_box = p;
+    p_box.y -= 2.0;
+
+    vec2 repeat = vec2(8.6, 8.6);
+    vec2 hrepeat = repeat * 0.5;
+    p_box.xz = mod(p_box.xz + hrepeat, repeat) - hrepeat;
+
+    float d_box = sdf_box(p_box, vec3(0.4, 4.0, 0.4)) - 0.1;
+
+    return d_box;
+}
+
+float sdf_background(vec3 p)
+{
+    float d_forest = sdf_forest(p);
+    return d_forest;
+}
+
+vec4 sdf(vec3 p, vec3 charpos)
+{
+    float d_floor = sdf_plane(p, vec3(0.0, 1.0, 0.0), -1.0);
+    float d_character = sdf_character(p, charpos);
+    d_character = op_union_round(d_floor, d_character, 1.5);
+    float d_background = sdf_background(p);
+
+    float d = op_union_round(d_character, d_background, 0.5);
+
+    return vec4(0.0, 1.0, 0.0, d);
+}
+
+vec4 raymarch(vec3 o, vec3 r, vec3 charpos)
+{
+    vec3 p;
+    vec4 d;
+    vec4 t = vec4(0.0, 0.0, 0.0, 0.5);
+    for (int i = 0; i < 48; i++)
+    {
+        p = o + r * t.w;
+        d = sdf(p, charpos);
+        if (d.w < NEAR || t.w > FAR) { break; }
+        t.w += d.w;
+    }
+    return t;
+}
+
+mat3 lookat(vec3 o, vec3 t)
+{
+    vec3 UP = vec3(0.0, 1.0, 0.0);
+    vec3 F = normalize(t - o);
+    vec3 R = cross(F, UP);
+    vec3 U = cross(R, F);
+    return mat3(R, U, F);
+}
+
+vec3 normalat(vec3 p, vec3 charpos)
+{
+    const vec2 e = vec2(0.002, 0.0);
+    return normalize(vec3(
+        sdf(p + e.xyy, charpos).w - sdf(p - e.xyy, charpos).w,
+        sdf(p + e.yxy, charpos).w - sdf(p - e.yxy, charpos).w,
+        sdf(p + e.yyx, charpos).w - sdf(p - e.yyx, charpos).w
+    ));
+}
+
+void main()
+{
+    vec2 uv = vs_position.xy;
+    uv.x *= u_aspect;
+
+    vec2 offset = u_control.xy;
+    offset = mat2(-0.707, 0.707, -0.707, -0.707) * offset;
+
+    vec3 org = vec3(-4.0, 4.0, -4.0);
+    org.xz += offset;
+
+    vec3 charpos = vec3(0.0);
+    charpos.xz += offset;
+    vec3 ray = lookat(org, charpos + vec3(0.0, 0.5, 0.0)) * normalize(vec3(uv, 1.0));
+
+    vec3 RGB = vec3(0.1 - vs_position.y * 0.05);
+    vec4 scene = raymarch(org, ray, charpos);
+
+    fs_color = vec4(scene.xyz, scene.w);
+    fs_normal = vec4(0.0);
+    fs_position = vec4(0.0, 0.0, 0.0, scene.w);
+    if (scene.w < FAR)
+    {
+        vec3 P = org + ray * scene.w;
+        vec3 N = normalat(P, charpos);
+
+        fs_normal.xyz = N * 0.5 + 0.5;
+        fs_normal.w = 1.0;
+        fs_position.xyz = P;
+    }
+}
