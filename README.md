@@ -3,13 +3,15 @@
 
 
 # requirements
-OpenGL 4.6 supported machine
-python 3.5 or above
-pyglm
-moderngl
-glfw
-watchdog
-numpy
+* OpenGL 4.6 supported machine
+* python 3.5 or above
+
+python libraries (these can be installed through pip)
+* pyglm
+* moderngl
+* glfw
+* watchdog
+* numpy
 
 
 # notice
