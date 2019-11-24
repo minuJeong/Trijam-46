@@ -138,13 +138,12 @@ float sdf_character(vec3 p, inout MarchingInfo info)
 
         for (int i = 0; i < 13; i++)
         {
-
             float c = cos(angle);
             float s = sin(angle);
             angle += angle_step;
 
             float foot = random(
-                vec2(angle, (u_time * u_speed) * 0.6)
+                vec2(angle, (u_time * u_speed) * 0.000001)
             ) * 2.5;
 
             leg_p_a.xz = vec2(c, s) * (4.2 - foot * 0.5);
