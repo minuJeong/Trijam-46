@@ -3,11 +3,11 @@
 in vec4 vs_position;
 out vec4 fs_color;
 
-layout(binding=0) uniform sampler2D u_gbuffer_color;
-layout(binding=1) uniform sampler2D u_gbuffer_normal;
-layout(binding=2) uniform sampler2D u_gbuffer_position;
-layout(binding=3) uniform sampler2D u_gbuffer_stencil;
-layout(binding=4) uniform sampler2D u_gbuffer_depth;
+layout(location=0) uniform sampler2D u_gbuffer_color;
+layout(location=1) uniform sampler2D u_gbuffer_normal;
+layout(location=2) uniform sampler2D u_gbuffer_position;
+layout(location=3) uniform sampler2D u_gbuffer_stencil;
+layout(location=4) uniform sampler2D u_gbuffer_depth;
 
 uniform vec3 u_camerapos;
 
