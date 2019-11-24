@@ -12,6 +12,7 @@ imgui = {extras = ["glfw"],version = "*"}
 pyglm = "*"
 watchdog = "*"
 pyinstaller = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.8"
