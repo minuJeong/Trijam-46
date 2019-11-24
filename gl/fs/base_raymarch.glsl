@@ -4,10 +4,10 @@
 
 in vec4 vs_position;
 
-layout(binding=0) out vec4 fs_color;
-layout(binding=1) out vec4 fs_normal;
-layout(binding=2) out vec4 fs_position;
-layout(binding=3) out vec4 fs_stencil;
+layout(location=0) out vec4 fs_color;
+layout(location=1) out vec4 fs_normal;
+layout(location=2) out vec4 fs_position;
+layout(location=3) out vec4 fs_stencil;
 
 uniform float u_aspect;
 uniform vec2 u_control;
